@@ -1,0 +1,81 @@
+START:
+CALL KEYBOARDINPUT	;read the first number
+MOV B,A
+CALL KEYBOARDINPUT	;read the second number
+MOV C,A		
+
+MOV A,B
+MVI D,0FH	;counter for the multiplication
+CALL OPERATION
+CALL HEXTODEC
+LXI D,0B50H
+CALL STDM
+CALL DCD
+JMP START
+
+KEYBOARDINPUT:	;routine that reads a 1-bit number [0-F] from the keyboard
+CALL KIND
+CPI 10H
+JNC KEYBOARDINPUT
+RET
+
+OPERATION:	;implements 16*x + y with consecutive additions
+ADD B
+DCR D
+MOV E,A	;temp store result
+MOV A,D	;retrieve counter to check how many times the addition is performed
+CPI 00H
+MOV A,E
+JNZ OPERATION	;repeat till 16 additions reached
+ADD C		;then add the second number
+RET
+
+HEXTODEC:
+
+MVI B,00H	;counts the # of hundreds/tens/ones 
+
+
+HUNDREDS:
+CPI 64H	;if  A < 100 store B for hundreds
+JC STOREHUNDREDS
+; else inr # of hundreds and decrease number by 100 and repeat
+INR B
+SUI 64H
+JMP HUNDREDS
+STOREHUNDREDS:
+MOV C,A	;temp store number
+MOV A,B	;store # of hundreds in random address 0B52H for STDM
+STA 0B52H
+MOV A,C
+MVI B,00H	;reinitialize B for tens
+
+TENS:
+CPI 0AH	;if A < 10
+JC STORETENS
+;same as hundreds
+INR B
+SUI 0AH
+JMP TENS
+STORETENS:
+MOV C,A
+MOV A,B
+STA 0B51H
+MOV A,C
+MVI B,00H
+
+ONES:
+CPI 01H	; if A<1
+JC STOREONES
+;same as ones
+INR B
+SUI 01H
+JMP ONES
+STOREONES:
+MOV C,A
+MOV A,B
+STA 0B50H
+MOV A,C
+
+RET
+
+END
