@@ -1,3 +1,8 @@
+MVI A,10H	;empty space on 7seg
+STA 0B53H
+STA 0B54H
+STA 0B55H
+
 START:
 CALL KEYBOARDINPUT	;read the first number
 MOV B,A
