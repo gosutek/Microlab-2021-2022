@@ -1,0 +1,36 @@
+
+
+LXI B,03E8H ; B = 1000d -> delay = 1s
+MVI D,00H
+
+START:	LDA 2000H
+	ANI 0FH
+	MOV E,A	;make E the LSB value
+	CALL CHECK	;if MSB is on continue, else wait for it to turn on
+INC:	MOV A,D
+	CMA
+	STA 3000H	;show the value of D in the LEDS
+	CALL DELB	;delay 1 sec
+	CALL CHECK	;same as before
+	INR D		;D++
+	MOV A,D
+	CMP E
+	JC INC		;while D<E go to INC
+DEC:	MOV A,D
+	CMA
+	STA 3000H
+	CALL DELB
+	CALL CHECK
+	DCR D		;D--
+	JNZ DEC	;while D>0 go to DEC
+	JMP START	;if D = 0 then go to Start to refresh the value of E
+
+
+
+CHECK:	LDA 2000H
+	ANI 80H
+	CPI 80H
+	JNZ CHECK
+	RET
+
+END		
