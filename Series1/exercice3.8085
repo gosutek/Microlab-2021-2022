@@ -1,0 +1,61 @@
+
+LXI B,01F4H 	; B = 500d -> delay = 0.5s
+MVI D,01H	;counter
+MVI E,01H	;register to remember the state of the LSB 
+
+INC:	MOV A,D
+	CMA
+	STA 3000H	;show the value of D in the LEDS
+	CALL DELB	;delay 0.5 sec
+INCN:	CALL CHECK	;checking if the MSB is on, if not then we wait
+	LDA 2000H
+	ANI 01H
+	CMP E		;checks if the state of the LSB has changed
+	JNZ CHANGENDEC ;if yes, then goes to CHANGENDEC
+	MOV A,D
+	CPI 80H
+	JZ DEC		;if it has reached the MSB then go to DEC
+	RLC		;else move it one position to the left
+	MOV D,A
+	JMP INC
+
+DEC:	MOV A,D
+	CMA
+	STA 3000H	;show the value of D in the LEDS
+	CALL DELB	;delay 0.5 sec
+DECN:	CALL CHECK	;checking if the MSB is on, if not then we wait
+	LDA 2000H
+	ANI 01H
+	CMP E		;checks if the state of the LSB has changed
+	JNZ CHANGENINC ;if yes, then goes to CHANGENDEC
+	MOV A,D
+	CPI 01H
+	JZ INC		;if it has reached the LSB then go to INC
+	RRC		;else move it one position to the right
+	MOV D,A
+	JMP DEC
+
+;change the value of E and go to DEC
+CHANGENDEC:	MOV A,E
+		CMA
+		ANI 01H
+		MOV E,A
+		JMP DECN	;DECN if we don't want double delay for the displayed led
+				;if we don't mind we can simply put DEC
+
+;change the value of E and go to INC
+CHANGENINC:	MOV A,E
+		CMA
+		ANI 01H
+		MOV E,A
+		JMP INCN	;same as DECN
+
+;CHECK POWER (ON-OFF) ROUTINE
+CHECK:	LDA 2000H
+	ANI 80H
+	CPI 80H
+	JNZ CHECK
+	RET
+
+
+END		
