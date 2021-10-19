@@ -11,7 +11,11 @@ MOV C,A
 
 MOV A,B
 MVI D,0FH	;counter for the multiplication
-CALL OPERATION
+RLC
+RLC
+RLC
+RLC
+ADD C
 CALL HEXTODEC
 LXI D,0B50H
 CALL STDM
@@ -22,17 +26,6 @@ KEYBOARDINPUT:	;routine that reads a 1-bit number [0-F] from the keyboard
 CALL KIND
 CPI 10H
 JNC KEYBOARDINPUT
-RET
-
-OPERATION:	;implements 16*x + y with consecutive additions
-ADD B
-DCR D
-MOV E,A	;temp store result
-MOV A,D	;retrieve counter to check how many times the addition is performed
-CPI 00H
-MOV A,E
-JNZ OPERATION	;repeat till 16 additions reached
-ADD C		;then add the second number
 RET
 
 HEXTODEC:
