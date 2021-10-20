@@ -5,7 +5,8 @@ MVI D,00H
 
 START:	LDA 2000H
 	ANI 0FH
-	MOV E,A	;make E the LSB value
+	JZ START	;check if zero dip switches are turned on
+	MOV E,A		;make E the LSB value
 	CALL CHECK	;if MSB is on continue, else wait for it to turn on
 INC:	MOV A,D
 	CMA
