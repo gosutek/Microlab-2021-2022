@@ -40,7 +40,14 @@
 	\end{center}
 \end{titlepage}
 
+
 \section*{Άσκηση 1}
+
+\subsection*{Γενική Ιδέα}
+
+Αφού διαβάσουμε τα dip switches και ξεκινώντας απο το '0' (σβηστά όλα τα LEDs) αυξάνουμε τα LEDs κατα '1' και ελέγχουμε αν έφτασε στην τιμή των switches. Στην περίπτωση που έφτασε, μειώνουμε τα LEDs κατα '1' μέχρι να φτάσουν στο '0' και το πρόγραμμα ξεκινάει από την αρχή.
+
+\subsection*{Κώδικας}
 
 \begin{minted}[linenos,frame=single,breaklines=true]{nasm}
 
@@ -88,6 +95,11 @@ END
 
 \section*{Άσκηση 2}
 
+\subsection*{Γενική ιδέα}
+Αρχικά διαβάζουμε το input και εκτελούμε την πράξη $16x + y$. Έπειτα μετατρέπουμε το αποτέλεσμα στο δεκαδικό σύστημα και το εμφανίζουμε στο 7-seg display. Η μετατροπή γίνεται μετρώντας διαδοχικά τις εκατοντάδες/δεκάδες/μονάδες του αποτελέσματος.
+
+\subsection*{Κώδικας}
+
 \begin{minted}[linenos,frame=single,breaklines=true]{nasm}
 
 MVI A,10H	;empty space on 7seg
@@ -102,11 +114,11 @@ CALL KEYBOARDINPUT	;read the second number
 MOV C,A		
 
 MOV A,B
+RLC                 ;4 RLC commands implement 16*x
 RLC
 RLC
 RLC
-RLC
-ADD C
+ADD C               ; 16*x + y
 CALL HEXTODEC
 LXI D,0B50H
 CALL STDM
@@ -173,6 +185,14 @@ END
 
 \section*{Άσκηση 3}
 
+\subsection*{Γενική Ιδέα}
+Η λογική που ακολουθείται είναι παρόμοια της πρώτης άσκησης. Η κίνηση του LED γίνεται μέσω bit-wise shift operations. Επιπλέον, η χρονική καθυστέρηση λαμβάνει μέρος πριν πραγματοποιηθεί ο έλεγχος αφίξης σε κάποιο άκρο, έτσι επιτυγχάνουμε 0.5 sec επιπλέον καθυστέρηση στα άκρα. Ο έλεγχος για αλλαγή κατεύθυνσης έχει δυο συνθήκες με σειρά προτεραιότητας:
+\begin{enumerate}
+    \item Το state του LSB να είναι διαφορετικό απο την προηγούμενη αποθυκευμένη τιμή.
+    \item Το νέο state να είναι '0'.
+\end{enumerate}
+\subsection*{Κώδικας}
+
 \begin{minted}[linenos,frame=single,breaklines=true]{nasm}
 
 
@@ -185,8 +205,8 @@ INC:
 	CMA
 	STA 3000H	    ;show the value of D in the LEDS
 	CALL DELB	    ;delay 0.5 sec
-INCN:		       ;checking if the MSB is on, if not then we wait
-        CALL CHECK
+INCN:
+        CALL CHECK ;checking if the MSB is on, if not then we wait
 	LDA 2000H
 	ANI 01H
 	CMP E		    ;checks if the state of the LSB has changed
