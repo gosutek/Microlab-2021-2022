@@ -13,7 +13,7 @@ ISR(INT0_vect) {
 	if (check == 0x00) {	//if not set
 		v = PINB;
 		count = bit_count(v); //count the number of set bits
-		PORTC = 4 * count - 1; //light up 'count' # of LEDs
+		PORTC = 2^count - 1; //light up 'count' # of LEDs
 	}
 	else {
 		v = PINB;
