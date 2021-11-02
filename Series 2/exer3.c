@@ -5,7 +5,7 @@ volatile int check, count, v;
 volatile int bit_count(volatile int v);
 
 
-#define NOP(){__asm__ __volatile__("nop");} //does nothing. needed inside while(1) otherwise "step into" doesn't work.
+#define NOP(){__asm__ __volatile__("nop");} //does nothing. needed inside while(1) compiler optimizations skip it
 
 // INT0 interrupt service routine
 ISR(INT0_vect) {
