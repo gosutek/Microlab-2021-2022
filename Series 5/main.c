@@ -26,6 +26,7 @@ void wait_usec(unsigned int delay);
 void wait_msec(unsigned int delay);
 
 /*LCD Assembly*/
+//we kept the assembly code, given by the proffessors, for these lcd functions and we imported them from the .S files 
 extern void LCD_init();
 extern void LCD_show(unsigned char cha);
 
@@ -147,7 +148,7 @@ unsigned char keypad_to_ascii_sim() {
 }
 
 void PWM_init() {
-	//prescale = 8
+	//set TMR0 in fast PWM mode with non-inverted output, prescale=8
 	TCCR0 = (1<<WGM00) | (1<<WGM01) | (1<<COM01) | (1<<CS01);
 	DDRB |= (1<<PB3);
 }
@@ -159,13 +160,14 @@ void ADC_init(){
 
 ISR(TIMER1_OVF_vect){
 	TCNT1 = 64755; //100ms
-	ADCSRA |= (1<<ADSC);
+	ADCSRA |= (1<<ADSC);//adc start conversion enable
 }
 
 ISR(ADC_vect){
 	adc_output = ADC;
 }
 
+//function which takes the ADC and shows in the lcd the converted voltage value
 void convert_to_voltage_and_show(char adc_decimal_buffer[]) {
 	float analog_input = (float) 5 * adc_output / 1024;
 	
@@ -204,7 +206,7 @@ int main(void)
 				button_pressed = keypad_to_ascii_sim();
 				break;
 			}
-			if (old_output != adc_output) {
+			if (old_output != adc_output) { //if the adc hasn't changed, dont show and compute the output again
 				old_output = adc_output;
 				LCD_init();
 				LCD_show('V');
@@ -215,11 +217,11 @@ int main(void)
 			}
 		}
 		if ((button_pressed == '1') && duty < 255) {
-			duty++;
+			duty++;//increasing the upper pulse
 			OCR0 = duty;
 		}
 		else if((button_pressed == '2') && duty > 0){
-			duty--;
+			duty--;//decreasing the upper pulse
 			OCR0 = duty;
 		}
 	}
