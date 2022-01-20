@@ -8,29 +8,36 @@
 	
 
 int temp = 0x0000;
-int t_flag = 0, password = 0; 
-int leds = 0x00, MSB_led = 0x00;
+int t_flag = 0; // όταν είναι 0 βγαζει στην εξοδο 0, όταν είναι 1 βγάζει το επίπεδο του αερίου
+int password = 0;//αν είναι 1 (σωστός κωδικός) κάνει το t_flag 1, για να μην αναβοσβήνουν τα 4 δευτερόλεπτα που η ειδική ομάδα είναι στην αίθουσα
+int leds = 0x00, MSB_led = 0x00; //η κατάσταση του επιπέδου του αερίου και του MLSB της portb
  
 ISR(TIMER1_OVF_vect) {
 	TCCR1B = (1<<CS12)|(0<<CS11)|(1<<CS10);
 	TCNT1 = 64755; //100ms
 	ADCSRA |= (1<<ADSC);
 	
-	if(t_flag == 0)  t_flag = 1;
+	if(t_flag == 0)  t_flag = 1;	//ανα 100ms αλλάζουμε αυτήν την τιμή για να αναβοσβήσουμε τα led όταν το επίπεδο του αερίου ξεπεράσει τα όρια
 	else t_flag = 0;
-	if(password == 1) t_flag = 1;
+	if(password == 1) t_flag = 1; //σε περίπτωση σωστού κωδικού σταματάμε την εναλλαγή
 }
+
+
+//Απο τον τύπο Vgas = C*M + Vgas0 βρήκαμε οτι για C = 70ppm, Vgas = 1. 
+//Επιπλέον η έξοδος του ADC είναι ADC = Vin * (1024/5) = 204.8*Vin, όπου Vin = Vgas. 
+//Άρα, έχουμε συναγερμό για ADC>205
+//Χωρίζουμε τα επίπεδα σε 7, άρα 1024/7 = 147 τιμές το επίπεδο
 
 ISR(ADC_vect){
 	if(ADC < 147) PORTB = 0x01 | (MSB_led << 7);
-	else if(ADC >= 147 && ADC < 294) PORTB = 0x03 | (MSB_led << 7);
+	else if(ADC >= 147 && ADC < 205) PORTB = 0x03 | (MSB_led << 7);
 	else if(t_flag == 1){
-		if(ADC >= 294 && ADC < 441) leds = 0x03;
-		else if(ADC >= 441 && ADC < 588) leds = 0x07; 
-		else if(ADC >= 588 && ADC < 735) leds = 0x0F;
-		else if(ADC >= 735 && ADC < 882) leds = 0x1F;
-		else if(ADC >= 882 && ADC < 1024) leds = 0x3F;
-		else if(ADC >= 1024) leds = 0x7F;
+		if(ADC >= 205 && ADC < 294) leds = 0x03;
+		else if(ADC >= 294 && ADC < 441) leds = 0x07; 
+		else if(ADC >= 441 && ADC < 588) leds = 0x0F;
+		else if(ADC >= 588 && ADC < 735) leds = 0x1F;
+		else if(ADC >= 735 && ADC < 882) leds = 0x3F;
+		else if(ADC >= 882) leds = 0x7F;
 		PORTB = leds | (MSB_led << 7);
 	}
 	else {
@@ -185,14 +192,14 @@ int main(void)
 		 }
 		 while(r24 == 0 && r25 == 0);	//continue scanning for the 2nd digit
 		 if (c1 == '7' && c2 == '1') {	//if the digit were 7 and then 1
-			 password = 1;
+			 password = 1; //correct password
 			 MSB_led = 1;				
-			 PORTB = 0x80 | leds;				//switch on the B7 
+			 PORTB = 0x80 | leds;				//switch on the PB7 and the state of the leds for 4 seconds
 			 for(int i = 0; i < 190; i++) {	//for 4 seconds
 				 scan_keypad_rising_edge_sim(15, &r24, &r25);	//while scanning also (required in the remote access program)
 				 _delay_ms(1);
 			 }
-			 PORTB = 0x00 | leds;				//after the 4 seconds switch off the leds
+			 PORTB = 0x00 | leds;				//after the 4 seconds switch off the PB7
 			 MSB_led = 0;
 			 password = 0;
 		 
