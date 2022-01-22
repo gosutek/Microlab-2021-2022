@@ -1,10 +1,10 @@
 .DSEG
 _tmp_:.byte 2
 
-.DEF temp = r16
-.DEF clear_lcd = r17
-.DEF gas_led = r18
-.DEF gas_detected = r19
+.DEF temp = r16	;used for cpc instruction
+.DEF clear_lcd = r17 ;indicates if the message "CLEAR" is on the LCD (clear_lcd == 0x01) or not (clear_lcd == 0x00)
+.DEF gas_led = r18 ;stores the states of the gas_leds (PB0-PB6). We divided 1024(maximum number the ADC can read) by 8 = 128. That means 128 gas levels. With the first (<128) being all gas_leds off.
+.DEF gas_detected = r19 ;indicates if the message "GAS DETECTED" is on the LCD (gas_detected == 0x01) or not (gas_detected == 0x00)
 
 .CSEG
 .include "m16def.inc"
@@ -29,7 +29,7 @@ main:
 	clr r28
 	clr r20
 	clr r21
-
+	;T flag of SREG is used for flicking the gas leds
 	clt
 
 	ldi r24, (1 << PC7)|(1 << PC6)|(1 << PC5)|(1 << PC4)	;Initialize 4 MSB of PORTC as outputs
@@ -39,25 +39,25 @@ main:
 	out DDRB, r24			;Initialize LEDs
 	out DDRD, r24			;Initialize PORTD(LCD) as output
 
-	rcall ADC_init
-	rcall TCNT1_init
+	rcall ADC_init			;Initialize ADC
+	rcall TCNT1_init		;Initialize timer1
 
 	clr r24
-	rcall lcd_init_sim
+	rcall lcd_init_sim		;Clear LCD
 
-	sei
+	sei						;Enable global interrupts
 
 	first_button:
 		rcall scan_keypad_rising_edge_sim
         mov r22, r24
         or r22, r25
 		cpi r22, 0
-
+		;The cpu spends most of the time in this code block therefore we output any changes to the gas LEDs states performed by the ADC interrupt.
 		out PORTB, gas_led
 
 		breq first_button
     first_ascii:
-		rcall keypad_to_ascii_sim
+		rcall keypad_to_ascii_sim	;Convert to ASCII for comparison
 		mov r20, r24		;first button
 
 	second_button:
@@ -65,24 +65,24 @@ main:
         mov r22, r24
         or r22, r25
         cpi r22, 0
-
+		;The cpu might spend some time in this code block therefore we output any changes to the gas LEDs states performed by the ADC interrupt.
 		out PORTB, gas_led
 
 		breq second_button
     second_ascii:
-		rcall keypad_to_ascii_sim
+		rcall keypad_to_ascii_sim	;Convert to ASCII for comparison
 		mov r21, r24		;second button
 
-	check:
+	check:	;Check if the input code is correct. For our team, that's "71"
 		cpi r20, '7'
 		brne wrong
         cpi r21, '1'
         brne wrong
-
+		;Past this point we have a correct password
 	correct:
-		cli					;Stop global interrupts
+		cli					;Stop global interrupts. We don't want any of the gas detection features during this part
 
-        rcall lcd_init_sim
+        rcall lcd_init_sim	;Clear LCD
 
         ldi r24, 'W'
         rcall lcd_data_sim
@@ -101,20 +101,20 @@ main:
 
         rcall scan_keypad_rising_edge_sim   ;for successful remote operation
 
-		ldi r24, 0x80
-
-		out PORTB, r24
-
+		ldi r24, 0x80		;Light up
+			
+		out PORTB, r24		;the MSB of leds PB
+			
 		ldi r24, low(4000)
 		ldi r25, high(4000)
-		rcall wait_msec
+		rcall wait_msec		;Wait for 4 secs
 
-		clr r24
-		out PORTB, r24
-		rcall lcd_init_sim
-		clr gas_detected
-		clr clear_lcd
-		sei
+		clr r24				;Turn off
+		out PORTB, r24		;the MSB of leds PB
+		rcall lcd_init_sim	;Clear "WELCOME"
+		clr gas_detected	;LCD is empty therefore this should be 0x00
+		clr clear_lcd		;LCD is empty therefore this should be 0x00
+		sei					;Enable global interrupts again
 		jmp first_button
 		
 	wrong:
@@ -221,20 +221,20 @@ main:
 		brne wait_usec ;1 cycle the majority of the time
 
 		ret
-
+	;ADC initialization routine
 	ADC_init:
-		ldi r24, (1 << REFS0)
+		ldi r24, (1 << REFS0)	;Vcc = 5V
 		out ADMUX, r24
 
-		ldi r24, (1 << ADEN) | (1 << ADIE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0)
+		ldi r24, (1 << ADEN) | (1 << ADIE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0)	;Enable ADC, Enable ADC interrupts, prescaler = 128
 		out ADCSRA, r24
 		ret
-
+	;TIMER1 initialization routine
 	TCNT1_init:
-		ldi r24, (1 << TOIE1)
+		ldi r24, (1 << TOIE1)	;Enable interrupts for timer1
 		out TIMSK, r24
 
-		ldi r24, (1 << CS12) | (0 << CS11) | (1 << CS10)
+		ldi r24, (1 << CS12) | (0 << CS11) | (1 << CS10)	;Set prescaler at 1024.
 		out TCCR1B, r24
 
 		;Clock at 8MHz
@@ -247,21 +247,21 @@ main:
 		out TCNT1L, r24
 
 		ret
-
+	;TIMER1 overflow ISR
 	ISR_TIMER1_OVF:
 		push r24
-
-		cpi r28, 0x01
-		brne continue_1
-
-		brtc continue_1
-		clt
+		;Here we implement the gas LEDs flickering if the alarm is on. The T flag of SREG is used for determining whether the gas LEDs should be on/off(T flag = 0x00/0x01) for the next 100ms.
+		cpi r28, 0x01	;r28 is indicative of whether the alarm (over 70ppm) is on or off (0x01, 0x00)
+		brne continue_1	;If the alarm is off, set T and continue with ISR
+		;If the alarm is on then
+		brtc continue_1	;If T was clear(gas_leds off) then they should be ON for the next 100ms
+		clt	;If T was set (gas_leds on) then they should be OFF for the next 100ms.
 		jmp continue_2
 
 	continue_1:
 		set
 	continue_2:
-		in r24, SREG
+		in r24, SREG	;Of course with have to save the state of SREG after we modify T.
 		push r24
 		ldi r24, (1 << CS12) | (0 << CS11) | (1 << CS10)
 		out TCCR1B, r24
@@ -287,30 +287,30 @@ main:
 		in r24, SREG
 		push r24
 
-		in r24, ADCL
+		in r24, ADCL			;r24,r25 store the output of the ADC
 		in r25, ADCH
 
 		cpi r24, 0x80			; adc < 128
-		cpc r25, r1
-		brcs long_jump_under_128
+		cpc r25, r1	
+		brcs long_jump_under_128;Too far for relative jump
 
 		cpi r24, 0xCD
 		cpc r25, r1				; adc < 205 (70ppm)
 		brcs long_jump_under_205
 		;This code is over 70ppm
-		ldi r28, 0x01
+		ldi r28, 0x01			;Alarm is on
 
-		brts continue_adc
-		clr gas_led
-		jmp ISR_ADC_EXIT
+		brts continue_adc		;If T is set then just calculate the new gas_led state. 
+		clr gas_led				;Else, a cleared T indicates that the gas_leds should be off
+		jmp ISR_ADC_EXIT		;So exit the ISR
 	long_jump_under_128:
 		jmp under_128
 	long_jump_under_205:
 		jmp under_205 
 	continue_adc:
-		cpi gas_detected, 0x01
+		cpi gas_detected, 0x01	;If "GAS DETECTED" message is on LCD, no need to show it again
 		breq dont_show_LCD
-
+		;If not on LCD then show it
 		rcall lcd_init_sim		; Clear LCD
 
 		ldi r24, 'G' 
@@ -338,8 +338,8 @@ main:
 		ldi r24, 'D'
 		rcall lcd_data_sim
 
-		ldi gas_detected, 0x01
-		clr clear_lcd
+		ldi gas_detected, 0x01	;"GAS DETECTED" on LCD, dont come back here unless its off!
+		clr clear_lcd			;"CLEAR" is not on LCD.
 	dont_show_LCD:
 
 		cp r24, r1				; adc < 256
@@ -376,7 +376,7 @@ main:
 		jmp ISR_ADC_EXIT
 	under_128:
 		clr r28
-		cpi clear_lcd, 0x01
+		cpi clear_lcd, 0x01		;If "CLEAR" message is on LCD, no need to show it again
 		breq dont_show_clear_128
 
 		rcall lcd_init_sim		; Clear LCD
@@ -392,10 +392,10 @@ main:
 		ldi r24, 'R'
 		rcall lcd_data_sim
 
-		ldi clear_lcd, 0x01
+		ldi clear_lcd, 0x01		;"CLEAR" on LCD, dont come back here unless its off!
 
 	dont_show_clear_128:
-		clr gas_detected
+		clr gas_detected		;"GAS DETECTED" is not on LCD.
 		clr gas_led
 		jmp ISR_ADC_EXIT
 
