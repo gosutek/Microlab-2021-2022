@@ -1,53 +1,46 @@
-\documentclass[11pt]{article}
+\documentclass{article}
+\usepackage[utf8]{inputenc}
 
 \usepackage[utf8]{inputenc}
 \usepackage[greek, english]{babel}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{hhline}
 \usepackage{alphabeta}
 \usepackage{lmodern}
 \usepackage[margin = 2.5cm, paperwidth=8.5in, paperheight=11in]{geometry}
-\usepackage{diagbox}
-\usepackage{caption}
-\captionsetup[listing]{position=top}
-\usepackage[newfloat]{minted}
-\usepackage[normalem]{ulem}
-\usepackage{listings}
-\usepackage{graphicx}
+\usepackage{graphicx, wrapfig}
+\usepackage{minted}
 
 
 \begin{document}
+\begin{wrapfigure}[5]{l}{0.2\textwidth}
+\includegraphics[scale=0.11]{pyrforos.png}
+\end{wrapfigure} 
+\noindent
+Εθνικό Μετσόβιο Πολυτεχνείο\\
+Σχολή Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών\\
+Τομέας Τεχνολογίας Πληροφορικής και Υπολογιστών\\
+\textbf{Εργαστήριο Μικροϋπολογιστών}\\
+Χειμερινό Εξάμηνο 2021-2022\\
+\vspace{2.5cm}
+\vspace{-5em}
+\hrule \vspace{.2em}
+\hrule
+\vspace{1cm}
+\centering
+{\Large \textbf{5η Εργαστηριακή Άσκηση}\\}
+\vspace{0.2cm}
+\raggedright
+$~~~~$\\
+Μέλος 1: Λαγός Αναστάσιος - 03113531\\
+Μέλος 2: Αντώνιος Δημήτριος Αλικάρης - 03118062 \\
 
-\begin{titlepage}
-    \includegraphics[width=0.2\textwidth]{images/logo.jpg}
-	\begin{center}
-		{ 
-			ΕΘΝΙΚΟ ΜΕΤΣΟΒΙΟ ΠΟΛΥΤΕΧΝΕΙΟ\\
-			ΣΧΟΛΗ ΗΛΕΚΤΡΟΛΟΓΩΝ ΜΗΧΑΝΙΚΩΝ ΚΑΙ ΜΗΧΑΝΙΚΩΝ ΥΠΟΛΟΓΙΣΤΩΝ
-		}
-		
-		\vfill
-
-		{\Large
-			Εργαστήριο Μικροϋπολογιστών
-		}
-		
-		{\large
-			$5^η$ εργαστηριακή άσκηση \\ Μικροελεγκτής AVR \\ Γεννήτρια Παραγωγής  μιας μεταβαλλόμενης ηλεκτρικής τάσης
-		}
-
-		\vfill
-
-		{
-			Αναστάσιος Λαγός - 03113531\\
-			Αντώνιος Δημήτριος Αλικάρης - 03118062
-		}
-	\end{center}
-\end{titlepage}
-
+\section*{Έλεγχος έντασης LEDs με χρήση PWM κυματομορφής}
 
 \subsection*{Γενική ιδέα}
-Χρησιμοποιούμε τον χρονιστή/μετρητή TIMER/COUNTER0 για να παράξουμε μία PWM κυματομορφή συχνότητας 4kHz. Επομένως, αρχικοποιύμε το prescaler στην τιμή των 8 και περιμένουμε να πατηθεί το πληκτρολόγιο για να αυξήσουμε ή να μειώσουμε την τιμή OCR0, δηλαδή το εύρος των παλμών. Επίσης, χρησιμοποιούμε και έναν χρονιστή όπου κάθε 100ms κάνει διακοπή προκειμένου να δώσει το σήμα μετατροπής  του ADC.
-
-Επίσης, σημειώνεται ότι οι συναρτήσεις για την χρήση της οθόνης LCD κρατήθηκαν σε κώδικα assembly, τις εισάγαμε στον κώδικα μας και τις προσθέσαμε ως αρχεία κατάληξης .S στον ίδιο φάκελο με την main συνάρτηση.
+Για να αυξομειώσουμε την ένταση των LEDs, χρησιμοποιούμε τον χρονιστή/μετρητή TIMER/COUNTER0 για να παράξουμε μία PWM κυματομορφή συχνότητας 4kHz της οποίας το duty cycle μεταβάλλεται από το πληκτρολόγιο(με το πλήκτρο "1" αυξάνεται, ενώ με το πλήκτρο "2" μειώνεται). Λόγω απομακρυσμένης πρόσβασης στην πλακέτα, για εξακρίβωση επιτυχής λειτουργίας, συνδέουμε την κυματομορφή ως είσοδο στον μετατροπέα ADC και εμφανίζουμε την τάση στην οθόνη LCD.\\
+Ο χρονιστής/μετρητής TIMER/COUTER1 χρησιμοποιείται για την λειτουργία του ADC κάθε 100ms.\\
+Το avr project περιλαμβάνει και 2 αρχεία .S που περιέχουν τις δύο απαραίτητες ρουτίνες για την λειτουργία της LCD(LCD\_init και LCD\_show) γραμμένες σε assembly.
 
 \subsection*{Κύριος Κώδικας σε c}
 
@@ -81,7 +74,7 @@ void wait_usec(unsigned int delay);
 void wait_msec(unsigned int delay);
 
 /*LCD Assembly*/
-//we kept the assembly code, given by the proffessors, for these lcd functions and we imported them from the .S files 
+//External LCD routines in assembly. Source code shown below
 extern void LCD_init();
 extern void LCD_show(unsigned char cha);
 
