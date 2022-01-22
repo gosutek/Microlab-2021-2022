@@ -8,7 +8,7 @@ _tmp_:.byte 2
 
 .CSEG
 .include "m16def.inc"
-
+;Define RESET,TIMER1 overflow and ADC routines
 .org 0x00
 rjmp main
 .org 0x10
@@ -19,7 +19,7 @@ rjmp ISR_ADC
 main:
 	ldi r24, low(RAMEND)	;Initialize stack pointer
 	out SPL, r24
-	ldi r24, high(RAMEND)
+	ldi r24, high(RAMEND)	;RAMEND is defined in m16def.inc
 	out SPH, r24
 
 	clr temp
